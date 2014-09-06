@@ -1,0 +1,55 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "usage: $0 port[:external_port[:protocol]] port2[:external_port2[:protocol2]] ..."
+    exit 1
+fi
+
+echo "[$(date --rfc-3339=seconds)]"
+
+upnp_info=$(upnpc -l | tr "[:blank:]" " ")
+local_addr_desc=$(grep -i "LAN ip" <<< "$upnp_info")
+local_addr=${local_addr_desc##* }
+
+echo "extracted local IP address: $local_addr"
+
+function set_forwarding {
+    echo -n "setting uPNP port forwarding... "
+    upnpc -a "$1" "$2" "$3" "$4" &>/dev/null && echo "done" || echo "failed"
+}
+
+function remove_forwarding {
+    echo -n "removing current forwarding... "
+    upnpc -d "$external_port" "$protocol" &>/dev/null && echo "done" || echo "failed"
+}
+
+for arg in "$@"; do
+    local_port=$(cut -f1 -d: <<< "$arg" | tr -d "[:space:]")
+    external_port=$(cut -f2 -d: <<< "$arg" | tr -d "[:space:]")
+    protocol=$(cut -f3 -d: <<< "$arg" | tr -d "[:space:]")
+
+    if [ -z "$local_port" ] || [ -z "$external_port" ]; then
+        continue
+    fi
+
+    if [ ! -z "$protocol" ] && [ "$external_port" != "$protocol" ]; then
+        protocol=$(tr "[:lower:]" "[:upper:]" <<< "$protocol")
+    else
+        protocol="TCP"
+    fi
+
+    echo -n "checking: router:${external_port} -> ${local_addr}:${local_port} (${protocol})... "
+    forwarding_list=$(grep -iE "${protocol} *${external_port}->" <<< "$upnp_info")
+
+    if [ -z "$forwarding_list" ]; then
+        echo "not found"
+        set_forwarding "$local_addr" "$local_port" "$external_port" "$protocol"
+        continue
+    fi
+
+    grep -q "${local_addr}:${local_port}" <<< "$forwarding_list" && echo "found" || {
+        echo "collision"
+        remove_forwarding "$external_port" "$protocol"
+        set_forwarding "$local_addr" "$local_port" "$external_port" "$protocol"
+    }
+done
