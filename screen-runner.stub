@@ -1,0 +1,13 @@
+#!/bin/sh
+
+cd "$(dirname "$0")"
+
+SESSION_NAME="session_name"
+CREATE_WINDOW="screen -S ${SESSION_NAME} -X screen"
+
+screen -d -m -U -S "${SESSION_NAME}"
+
+#${CREATE_WINDOW} some_long_lasting_command_1
+#${CREATE_WINDOW} some_long_lasting_command_2
+
+screen -S "${SESSION_NAME}" -p 0 -X kill
