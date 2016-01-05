@@ -1,0 +1,44 @@
+#!/bin/sh
+
+MARKETBOT_API_KEY=''
+MARKETBOT_API_SECRET=''
+MARKET_FEE='0.2%'
+ORDERS='10'
+
+BOT_EXEC=marketbot/bot
+MARKET_SCRIPT=marketbot/markets/$(basename $0).py
+LOG_PATH=logs/$(echo $(basename $0) | cut -d '.' -f 1)
+
+cd "$(dirname "$0")"
+
+if [ ! -x ${BOT_EXEC} ]; then
+	echo "Error: ${BOT_EXEC} is not executable"
+	exit 1
+fi
+
+if [ $# -eq 0 ]; then
+	${BOT_EXEC}
+	exit $?
+fi
+
+if [ ! -r ${MARKET_SCRIPT} ]; then
+	echo "Error: ${MARKET_SCRIPT} is not readable"
+	exit 1
+fi
+
+export MARKETBOT_API_KEY
+export MARKETBOT_API_SECRET
+
+if [ $1 = "api" ]; then
+	echo "Executing ${MARKET_SCRIPT} with api keys..."
+	python3 ${MARKET_SCRIPT}
+	exit 0
+fi
+
+mkdir -p ${LOG_PATH}
+
+while true
+do
+	${BOT_EXEC} "$@" -place ${ORDERS} -fee ${MARKET_FEE} ${MARKET_SCRIPT} 2>&1 | tee -a ${LOG_PATH}/$(date --iso-8601=seconds).log
+	sleep 120
+done
