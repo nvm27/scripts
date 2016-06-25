@@ -1,0 +1,14 @@
+#!/sbin/openrc-run
+
+depend() {
+	need razerd
+}
+
+start() {
+	ebegin "Adjusting Razer mouse settings"
+	start-stop-daemon --start \
+		--exec /usr/local/bin/razer.py --\
+		--set-frequency $frequency \
+		--set-resolution $resolution
+	eend $?
+}
