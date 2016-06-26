@@ -5,10 +5,14 @@ depend() {
 }
 
 start() {
+	if [ -z "${frequency}" ] || [ -z "${resolution}" ]; then
+		eerror "You need to set \"frequency\" and \"resolution\" variables"
+		return 1
+	fi
+
 	ebegin "Adjusting Razer mouse settings"
-	start-stop-daemon --start \
-		--exec /usr/local/bin/razer.py --\
-		--set-frequency $frequency \
-		--set-resolution $resolution
+	/usr/local/bin/razer.py \
+		--set-frequency ${frequency} \
+		--set-resolution ${resolution}
 	eend $?
 }
